@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OSH · Osu Skin Homie</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="top">
+    <div class="brand"><b>OSH</b><span>Osu Skin Homie</span></div>
+    <input id="skinName" placeholder="Skin name" title="Name of the saved skin" disabled>
+    <input id="skinAuthor" placeholder="Author" title="Skin author" disabled>
+    <span class="grow"></span>
+    <button id="btnImport">Import .osk / .zip</button>
+    <button id="btnFolder">Import folder</button>
+    <button id="btnNew">New blank skin</button>
+    <button id="btnUndo" disabled>Undo</button>
+    <button id="btnExport" class="primary" disabled>Save as new skin (.osk)</button>
+  </header>
+
+  <nav id="tabs" hidden>
+    <button data-tab="elements" class="on">Elements</button>
+    <button data-tab="ini">skin.ini</button>
+    <button data-tab="preview">Live preview</button>
+    <button data-tab="files">All files</button>
+  </nav>
+
+  <div id="welcome">
+    <div class="drop">
+      <h1>Drop an osu! skin here</h1>
+      <p>.osk file, .zip, or a skin folder. Everything stays on this computer.</p>
+      <div class="row">
+        <button class="primary" id="wImport">Choose .osk / .zip</button>
+        <button id="wFolder">Choose folder</button>
+        <button id="wNew">Start from scratch</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-elements" class="view" hidden>
+    <aside id="side"></aside>
+    <section class="center">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search elements…">
+        <label><input type="checkbox" id="missingOnly"> Missing only</label>
+        <span class="grow"></span>
+        <span id="stat"></span>
+      </div>
+      <div id="grid"></div>
+    </section>
+    <aside id="insp"></aside>
+  </div>
+
+  <div id="view-ini" class="view" hidden></div>
+
+  <div id="view-preview" class="view" hidden>
+    <div class="pvwrap">
+      <canvas id="pv"></canvas>
+      <div class="pvctl">
+        <label>Circle size <input type="range" id="pvCs" min="2" max="7" step="0.5" value="4"></label>
+        <label>Background <input type="color" id="pvBg" value="#15131c"></label>
+        <span class="hint">Move the mouse over the playfield to control the cursor. Elements the skin does not include are shown as placeholders; in game, lazer falls back to its default skin for those.</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-files" class="view" hidden></div>
+
+  <div id="toast"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

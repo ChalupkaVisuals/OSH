@@ -1,0 +1,14 @@
+{
+  "name": "osh",
+  "version": "0.1.0",
+  "description": "OSH (Osu Skin Homie): a local, browser-based osu!lazer skin editor and creator",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
