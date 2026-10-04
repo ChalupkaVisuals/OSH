@@ -187,7 +187,6 @@ Every update is published as a [GitHub release](https://github.com/ChalupkaVisua
 
 - The live preview shows osu!standard gameplay only. Taiko, catch and mania elements can be edited but are not previewed in motion.
 - lazer's layout files (`*.json` created by the in-game skin layout editor) are kept and can be edited as text, but there is no visual editor for them.
-- `skin.ini` files are read as UTF-8.
 - Zip64 archives (over 4 GB) are not supported.
 
 ## Contributing

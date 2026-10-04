@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { zip, unzip } from '../public/js/zip.js';
-import { parseIni, serializeIni, iniGet, iniSet, parseColour, rgbToHex, hexToRgb, maniaSchema } from '../public/js/ini.js';
+import { decodeText, parseIni, serializeIni, iniGet, iniSet, parseColour, rgbToHex, hexToRgb, maniaSchema } from '../public/js/ini.js';
 import { buildCatalog, CATEGORIES } from '../public/js/catalog.js';
 
 test('zip round-trips stored and deflated entries', async () => {
@@ -61,4 +61,20 @@ test('catalog has unique elements in known categories and follows font prefixes'
   for (const name of ['num-0', 'sc-percent', 'cb-x', 'hitcircle', 'cursor']) assert.ok(cat.some(e => e.name === name), name);
   assert.ok(!cat.some(e => e.name === 'default-0'));
   assert.ok(cat.find(e => e.name === 'sliderb').anim);
+});
+
+test('decodeText handles UTF-8 and UTF-16 skin.ini files', () => {
+  const text = '[General]\r\nName: 『Mikan』\r\n';
+  const le = new Uint8Array(text.length * 2), be = new Uint8Array(text.length * 2);
+  [...text].forEach((ch, i) => {
+    const c = ch.charCodeAt(0);
+    le[i * 2] = be[i * 2 + 1] = c & 255;
+    le[i * 2 + 1] = be[i * 2] = c >> 8;
+  });
+  assert.equal(decodeText(new TextEncoder().encode(text)), text);
+  assert.equal(decodeText(new Uint8Array([0xEF, 0xBB, 0xBF, ...new TextEncoder().encode(text)])), text);
+  assert.equal(decodeText(new Uint8Array([0xFF, 0xFE, ...le])), text);
+  assert.equal(decodeText(new Uint8Array([0xFE, 0xFF, ...be])), text);
+  assert.equal(decodeText(le), text); // no BOM
+  assert.equal(iniGet(parseIni(decodeText(new Uint8Array([0xFF, 0xFE, ...le]))), 'General', 'Name'), '『Mikan』');
 });

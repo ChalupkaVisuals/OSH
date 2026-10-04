@@ -1,5 +1,5 @@
 import { unzip, zip } from './zip.js';
-import { parseIni, serializeIni, iniGet, iniSet, SCHEMA, MANIA_KEYS, maniaSchema, parseColour, rgbToHex, hexToRgb } from './ini.js';
+import { decodeText, parseIni, serializeIni, iniGet, iniSet, SCHEMA, MANIA_KEYS, maniaSchema, parseColour, rgbToHex, hexToRgb } from './ini.js';
 import { CATEGORIES, buildCatalog } from './catalog.js';
 import { GEN_TYPES, FONTS, presetFor, drawGen } from './gen.js';
 import { DEFAULT_ADJ, adjustImage, canvasBytes, scaleCanvas, silentWav } from './imageops.js';
@@ -175,7 +175,7 @@ function loadEntries(list, fallbackName) {
   S.files = new Map();
   S.ini = parseIni('');
   for (const e of list) {
-    if (keyOf(e.path) === 'skin.ini') S.ini = parseIni(new TextDecoder().decode(e.bytes));
+    if (keyOf(e.path) === 'skin.ini') S.ini = parseIni(decodeText(e.bytes));
     else S.files.set(keyOf(e.path), { path: e.path, bytes: e.bytes });
   }
   const name = iniGet(S.ini, 'General', 'Name') || fallbackName || 'New Skin';
@@ -209,7 +209,7 @@ async function importFolder(files) {
 async function addLooseFiles(files) {
   const batch = [];
   for (const f of files) {
-    if (keyOf(f.name) === 'skin.ini') { S.ini = parseIni(await f.text()); syncTop(); }
+    if (keyOf(f.name) === 'skin.ini') { S.ini = parseIni(decodeText(await fileBytes(f))); syncTop(); }
     else setFile(f.name, await fileBytes(f), batch);
   }
   commit(batch);
@@ -570,7 +570,7 @@ function fileInspector(el) {
   const v = el.variants[0];
   if (!v) return [];
   if (el.kind !== 'txt') return [variantRow(v)];
-  const ta = h('textarea', { spellcheck: false, value: new TextDecoder().decode(v.rec.bytes) });
+  const ta = h('textarea', { spellcheck: false, value: decodeText(v.rec.bytes) });
   const save = () => {
     if (/\.json$/i.test(v.rec.path)) {
       try { JSON.parse(ta.value); } catch (err) {
@@ -684,6 +684,7 @@ function renderFiles() {
 const fallbackTex = new Map();
 const preview = new Preview($('#pv'), {
   ini: (section, key) => iniGet(S.ini, section, key),
+  has: name => !!S.byKey.get(`img:${name.toLowerCase()}`)?.variants.length,
   tex(name, now) {
     const el = S.byKey.get(`img:${name.toLowerCase()}`);
     if (el && el.variants.length) {

@@ -1,6 +1,6 @@
 {
   "name": "osh",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OSH (Osu Skin Homie): a local, browser-based osu!lazer skin editor and creator",
   "license": "MIT",
   "private": true,
