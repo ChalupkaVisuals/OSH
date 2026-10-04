@@ -2,6 +2,13 @@
 
 All notable changes to OSH are listed here. Each version is published as a GitHub release.
 
+## 0.2.1
+
+- The header now stays on one row on normal desktop widths.
+- White skin elements are easier to see: thumbnails sit on a slightly darker checkerboard with a faint outline.
+- Preview pause and speed buttons moved to the bottom right so they no longer cover the combo counter.
+- New README with screenshots, plus issue templates.
+
 ## 0.2.0
 
 - Complete redesign: light pastel interface with a dark theme, category chips with progress counts, a header progress bar, and icon buttons throughout.
