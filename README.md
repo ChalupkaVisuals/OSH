@@ -22,7 +22,7 @@ Nothing is uploaded anywhere. Your skin never leaves your computer.
   - [Generating missing elements](#generating-missing-elements)
   - [Sounds](#sounds)
   - [skin.ini tab](#skinini-tab)
-  - [Live preview tab](#live-preview-tab)
+  - [Live preview](#live-preview)
   - [All files tab](#all-files-tab)
   - [Saving as a new skin](#saving-as-a-new-skin)
 - [Running locally](#running-locally)
@@ -44,11 +44,12 @@ Nothing is uploaded anywhere. Your skin never leaves your computer.
 | **Image editing** | Hue, saturation, brightness, contrast, opacity, colorize, resize, rotate and flip, with a live preview. Apply to one element or to a whole category at once. |
 | **HD handling** | Understands `@2x` files and animation frames (`name-0`, `name-1` …). One click creates the missing 1x or `@2x` version of any image. |
 | **Generators** | Create missing elements from scratch: circles, rings, glows, dots, arrows, stars, bars and text. Sensible presets for hit circles, approach circles, cursors, slider balls, number fonts, hit bursts, ranking letters and more. |
-| **Sounds** | Play, replace, remove or silence any hitsound or UI sound. |
+| **Sounds** | Play, replace, remove or silence any hitsound or UI sound. Make sounds louder or quieter and shift their timing earlier or later, one sound or a whole category at once. |
 | **skin.ini** | A full form for `[General]`, `[Colours]`, `[Fonts]`, `[CatchTheBeat]` and every `[Mania]` key count, with defaults and descriptions, plus a raw text editor. Unknown keys and comments are preserved. |
-| **Live preview** | An animated osu! playfield drawn with your skin: hit circles, combo colours, numbers, approach circles, a slider, follow points, hit bursts, health bar, score, combo and a cursor with trail. |
+| **Live preview** | Always on screen next to whatever you are editing. An animated osu! playfield drawn with your skin: hit circles, combo colours, numbers, approach circles, a slider, follow points, hit bursts, health bar, score, combo and a cursor with trail. Pause it or change its speed. |
 | **File manager** | Rename, download, delete or add any file. Text files such as lazer's layout `.json` files can be edited in place. |
-| **Undo** | Every file change can be undone (button or `Ctrl+Z`). |
+| **Undo / redo** | Every file change can be undone and redone (buttons, `Ctrl+Z`, `Ctrl+Y`). |
+| **Themes** | Light and dark theme, remembered between visits. |
 | **Export** | Saves a ready-to-import `.osk` under a new name, so your original skin is never touched. |
 
 ## Quick start
@@ -69,6 +70,8 @@ Three ways, all equivalent:
 
 - **Import .osk / .zip**: pick an archive.
 - **Import folder**: pick an extracted skin folder.
+
+  Both are on the start screen, and later under the folder button in the top bar.
 - **Drag and drop**: drop an archive or folder anywhere on the page.
 
 If the archive wraps the skin in a sub-folder, OSH finds the folder containing `skin.ini` and uses that as the root. After import the skin name gets a `(custom)` suffix so the export cannot be confused with the original. Change it to whatever you want.
@@ -77,7 +80,7 @@ Dropping loose image or sound files while a skin is open **adds them to the skin
 
 ### Elements tab
 
-The left sidebar lists categories with a count of how many elements your skin has. The grid shows one card per element:
+The row of chips at the top lists the categories with a count of how many elements your skin has; a tick marks complete ones. The bar in the header shows the total. The grid shows one card per element:
 
 - solid card: the skin has this element
 - dashed card: missing, osu! will fall back to its default
@@ -108,6 +111,14 @@ The **blank** shape writes a 1×1 transparent image. That is the standard way to
 
 Sound cards have a play button. In the inspector you can listen, replace the sound with a `.wav`, `.ogg` or `.mp3`, remove it, or **Make silent** to write a silent file that mutes that sound in game.
 
+Under **Edit sound**:
+
+- **Volume** makes the sound quieter (below 100%) or louder (up to 400%). Very loud settings clip.
+- **Delay** shifts the timing. A positive value adds silence in front so the sound plays later; a negative value trims the start so it plays earlier.
+- **Preview** plays the result before you commit, **Apply** writes it, and **Apply to category** does the same to every sound in the category, which is handy for turning all hitsounds down at once.
+
+Edited sounds are saved as 16-bit `.wav`.
+
 ### skin.ini tab
 
 Each section is a form. Fields left empty are not written to the file, so the game default (shown as the placeholder) applies. Fields you have set are highlighted. The **✕** next to a colour clears it back to default.
@@ -116,9 +127,9 @@ Each section is a form. Fields left empty are not written to the file, so the ga
 - **[Mania]** has one section per key count. Pick the key count first. A dot marks key counts that already have settings.
 - **Raw text** shows the whole file for direct editing. Keys OSH does not know about are kept exactly as written.
 
-### Live preview tab
+### Live preview
 
-A looping osu!standard scene rendered with the current state of the skin. It reacts immediately to image edits and `skin.ini` changes (combo colours, slider border and track colours, font prefixes and overlaps, overlay order, cursor options). Move the mouse over the playfield to drive the cursor yourself, and use the slider to try different circle sizes.
+The panel on the right is visible on every page. It shows a looping osu!standard scene rendered with the current state of the skin. It reacts immediately to image edits and `skin.ini` changes (combo colours, slider border and track colours, font prefixes and overlaps, overlay order, cursor options). Move the mouse over the playfield to drive the cursor yourself. Use the play button to pause, the speed button to slow down or speed up, and the slider to try different circle sizes.
 
 Elements the skin does not include are drawn as simple placeholders. In game, lazer uses its own default skin for those instead.
 
@@ -164,6 +175,7 @@ public/
   js/catalog.js     list of every skinnable element
   js/gen.js         shape and text generators for missing elements
   js/imageops.js    image adjustments
+  js/audioops.js    sound volume and timing, wav encoder
   js/preview.js     live gameplay preview
 server.js           tiny static server for local use
 test/               unit tests (node:test)
@@ -177,11 +189,11 @@ No build step, no framework, no runtime dependencies. Zip compression uses the b
 npm test
 ```
 
-runs the unit tests for the zip, `skin.ini` and catalog modules. CI runs them on every push and pull request.
+runs the unit tests for the zip, `skin.ini`, catalog and audio modules. CI runs them on every push and pull request.
 
 ## Releases
 
-Every update is published as a [GitHub release](https://github.com/ChalupkaVisuals/OSH/releases). The version lives in `package.json` and the notes in [CHANGELOG.md](CHANGELOG.md). When a commit on `main` carries a version that has no release yet, CI tags it, publishes the release with the matching changelog section and attaches a zip of the app. The hosted version on GitHub Pages is redeployed at the same time.
+Every update is published as a [GitHub release](https://github.com/ChalupkaVisuals/OSH/releases). The version lives in `package.json` and the notes in [CHANGELOG.md](CHANGELOG.md). Each release has the matching changelog section as its notes and a zip of the app attached. The hosted version on GitHub Pages is updated at the same time.
 
 ## Limitations
 

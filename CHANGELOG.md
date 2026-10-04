@@ -2,6 +2,14 @@
 
 All notable changes to OSH are listed here. Each version is published as a GitHub release.
 
+## 0.2.0
+
+- Complete redesign: light pastel interface with a dark theme, category chips with progress counts, a header progress bar, and icon buttons throughout.
+- The live preview is now a panel that stays visible on every page, with pause and speed controls.
+- Sound editing: change volume (0 to 400%) and shift timing earlier or later, with a preview before applying. Works on one sound or a whole category.
+- Redo (button, `Ctrl+Y` or `Ctrl+Shift+Z`) alongside undo.
+- Import and "new skin" moved into a menu under the folder button.
+
 ## 0.1.1
 
 - Fixed: skins whose `skin.ini` is saved as UTF-16 (common for skins edited in Notepad) lost all their settings on import, so combo colours, slider colours and font settings fell back to defaults and the exported `skin.ini` was broken. UTF-8 and UTF-16 (with or without BOM) are now detected; the file is always written as UTF-8.

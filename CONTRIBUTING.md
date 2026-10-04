@@ -19,7 +19,7 @@ Open an issue describing the problem you want solved. Missing skin elements or `
 
 1. Fork the repository and create a branch from `main`.
 2. Run `npm start` and check your change in the browser.
-3. Run `npm test`. Add tests for changes to `zip.js`, `ini.js` or `catalog.js`.
+3. Run `npm test`. Add tests for changes to `zip.js`, `ini.js`, `catalog.js` or `audioops.js`.
 4. Keep the project dependency-free: plain ES modules, no build step.
 5. Describe what changed and why in the pull request.
 

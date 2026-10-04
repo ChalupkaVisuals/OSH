@@ -1,71 +1,127 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OSH · Osu Skin Homie</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%23e9e6ff' stroke='%233a3478' stroke-width='4'/%3E%3Ccircle cx='24' cy='30' r='3' fill='%233a3478'/%3E%3Ccircle cx='40' cy='30' r='3' fill='%233a3478'/%3E%3Cpath d='M26 39q6 5 12 0' fill='none' stroke='%233a3478' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Quicksand:wght@500;600;700&display=swap">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // set the saved theme before first paint
+    try { document.documentElement.dataset.theme = localStorage.getItem('osh-theme') || 'light'; } catch {}
+  </script>
 </head>
 <body>
-  <header id="top">
-    <div class="brand"><b>OSH</b><span>Osu Skin Homie</span></div>
-    <input id="skinName" placeholder="Skin name" title="Name of the saved skin" disabled>
-    <input id="skinAuthor" placeholder="Author" title="Skin author" disabled>
+  <header id="top" class="card">
+    <div class="brand">
+      <svg class="mascot" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="35" r="21" class="m-face"/>
+        <circle cx="25" cy="34" r="2.6" class="m-ink"/>
+        <circle cx="39" cy="34" r="2.6" class="m-ink"/>
+        <path d="M27 41q5 4 10 0" class="m-line"/>
+        <circle cx="20.5" cy="40" r="3" fill="#ffb3c7" opacity=".85"/>
+        <circle cx="43.5" cy="40" r="3" fill="#ffb3c7" opacity=".85"/>
+        <path d="M53 5l1.6 4.4L59 11l-4.4 1.6L53 17l-1.6-4.4L47 11l4.4-1.6z" fill="#f08bd0"/>
+        <path d="M8 12l1.2 3.3 3.3 1.2-3.3 1.2L8 21l-1.2-3.3-3.3-1.2 3.3-1.2z" fill="#b79cff"/>
+      </svg>
+      <div><b>OSH</b><span>Osu Skin Homie</span></div>
+    </div>
+
+    <label class="field name"><span>Skin name</span><input id="skinName" disabled></label>
+    <label class="field"><span>Author</span><input id="skinAuthor" disabled></label>
+
+    <div id="progress" class="progress" hidden><div class="bar"></div><span></span></div>
+
+    <nav id="tabs" class="seg" hidden>
+      <button data-tab="elements" class="on">Elements</button>
+      <button data-tab="ini">skin.ini</button>
+      <button data-tab="files">All files</button>
+    </nav>
+
     <span class="grow"></span>
-    <button id="btnImport">Import .osk / .zip</button>
-    <button id="btnFolder">Import folder</button>
-    <button id="btnNew">New blank skin</button>
-    <button id="btnUndo" disabled>Undo</button>
-    <button id="btnExport" class="primary" disabled>Save as new skin (.osk)</button>
+
+    <div class="menuwrap">
+      <button id="btnOpen" class="round" data-icon="folder" title="Open or create a skin"></button>
+      <div id="openMenu" class="menu card" hidden>
+        <button id="btnImport">Import .osk / .zip</button>
+        <button id="btnFolder">Import folder</button>
+        <button id="btnNew">New blank skin</button>
+      </div>
+    </div>
+    <button id="btnUndo" class="round" data-icon="undo" title="Undo (Ctrl+Z)" disabled></button>
+    <button id="btnRedo" class="round" data-icon="redo" title="Redo (Ctrl+Y)" disabled></button>
+    <div id="theme" class="seg theme">
+      <button data-theme="light" data-icon="sun" title="Light theme"></button>
+      <button data-theme="dark" data-icon="moon" title="Dark theme"></button>
+    </div>
+    <button id="btnExport" class="primary big" disabled>Save as .osk</button>
   </header>
 
-  <nav id="tabs" hidden>
-    <button data-tab="elements" class="on">Elements</button>
-    <button data-tab="ini">skin.ini</button>
-    <button data-tab="preview">Live preview</button>
-    <button data-tab="files">All files</button>
-  </nav>
-
   <div id="welcome">
-    <div class="drop">
+    <div class="drop card">
+      <svg class="mascot big" viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="35" r="21" class="m-face"/>
+        <circle cx="25" cy="34" r="2.6" class="m-ink"/>
+        <circle cx="39" cy="34" r="2.6" class="m-ink"/>
+        <path d="M27 41q5 4 10 0" class="m-line"/>
+        <circle cx="20.5" cy="40" r="3" fill="#ffb3c7" opacity=".85"/>
+        <circle cx="43.5" cy="40" r="3" fill="#ffb3c7" opacity=".85"/>
+        <path d="M53 5l1.6 4.4L59 11l-4.4 1.6L53 17l-1.6-4.4L47 11l4.4-1.6z" fill="#f08bd0"/>
+        <path d="M8 12l1.2 3.3 3.3 1.2-3.3 1.2L8 21l-1.2-3.3-3.3-1.2 3.3-1.2z" fill="#b79cff"/>
+      </svg>
       <h1>Drop an osu! skin here</h1>
       <p>.osk file, .zip, or a skin folder. Everything stays on this computer.</p>
       <div class="row">
-        <button class="primary" id="wImport">Choose .osk / .zip</button>
-        <button id="wFolder">Choose folder</button>
-        <button id="wNew">Start from scratch</button>
+        <button class="primary big" id="wImport">Choose .osk / .zip</button>
+        <button class="big" id="wFolder">Choose folder</button>
+        <button class="big" id="wNew">Start from scratch</button>
       </div>
     </div>
   </div>
 
-  <div id="view-elements" class="view" hidden>
-    <aside id="side"></aside>
-    <section class="center">
-      <div class="toolbar">
-        <input id="search" type="search" placeholder="Search elements…">
-        <label><input type="checkbox" id="missingOnly"> Missing only</label>
-        <span class="grow"></span>
-        <span id="stat"></span>
-      </div>
-      <div id="grid"></div>
-    </section>
-    <aside id="insp"></aside>
-  </div>
+  <div id="work" hidden>
+    <div id="chipsRow">
+      <button class="arrow" id="chipL" data-icon="chevL" title="Scroll left"></button>
+      <div id="chips"></div>
+      <button class="arrow" id="chipR" data-icon="chevR" title="Scroll right"></button>
+    </div>
 
-  <div id="view-ini" class="view" hidden></div>
+    <div id="cols">
+      <section id="left" class="card">
+        <div id="view-elements" class="view">
+          <div class="toolbar">
+            <label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="Search elements..."></label>
+            <span class="grow"></span>
+            <label class="switchrow">Missing only <input type="checkbox" class="switch" id="missingOnly"></label>
+          </div>
+          <div id="grid"></div>
+        </div>
+        <div id="view-ini" class="view" hidden></div>
+        <div id="view-files" class="view" hidden></div>
+      </section>
 
-  <div id="view-preview" class="view" hidden>
-    <div class="pvwrap">
-      <canvas id="pv"></canvas>
-      <div class="pvctl">
-        <label>Circle size <input type="range" id="pvCs" min="2" max="7" step="0.5" value="4"></label>
-        <label>Background <input type="color" id="pvBg" value="#15131c"></label>
-        <span class="hint">Move the mouse over the playfield to control the cursor. Elements the skin does not include are shown as placeholders; in game, lazer falls back to its default skin for those.</span>
-      </div>
+      <aside id="right">
+        <div class="card pvcard">
+          <h2>Live preview</h2>
+          <div class="pvbox">
+            <canvas id="pv"></canvas>
+            <div class="pvbtns">
+              <button id="pvPlay" class="pvplay" data-icon="pause" title="Pause or play"></button>
+              <button id="pvSpeed" class="pvspeed" title="Playback speed">1.0x</button>
+            </div>
+          </div>
+          <div class="pvctl">
+            <label>Circle size <input type="range" id="pvCs" min="2" max="7" step="0.5" value="4"></label>
+            <label>Background <input type="color" id="pvBg" value="#191530"></label>
+          </div>
+        </div>
+        <div class="card" id="insp"></div>
+      </aside>
     </div>
   </div>
-
-  <div id="view-files" class="view" hidden></div>
 
   <div id="toast"></div>
   <script type="module" src="js/app.js"></script>
