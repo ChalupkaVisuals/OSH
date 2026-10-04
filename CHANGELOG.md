@@ -2,6 +2,10 @@
 
 All notable changes to OSH are listed here. Each version is published as a GitHub release.
 
+## 0.2.2
+
+- New mascot: a hand-drawn homie with headphones and a paintbrush, used in the header, the start screen, the browser tab icon and the README.
+
 ## 0.2.1
 
 - The header now stays on one row on normal desktop widths.

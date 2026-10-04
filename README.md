@@ -233,6 +233,7 @@ A current version of Chrome, Edge or Firefox is required.
 ```
 public/
   index.html        page shell
+  img/              mascot and tab icon
   css/style.css     styles
   js/app.js         state, UI, import and export
   js/zip.js         zip reader and writer (.osk is a zip)
