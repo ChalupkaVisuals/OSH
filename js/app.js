@@ -3,6 +3,7 @@ import { decodeText, parseIni, serializeIni, iniGet, iniSet, SCHEMA, MANIA_KEYS,
 import { CATEGORIES, buildCatalog } from './catalog.js';
 import { GEN_TYPES, FONTS, presetFor, drawGen } from './gen.js';
 import { DEFAULT_ADJ, adjustImage, canvasBytes, scaleCanvas, silentWav } from './imageops.js';
+import { decodeAudio, processAudio, encodeWav, playAudio } from './audioops.js';
 import { Preview } from './preview.js';
 
 const $ = s => document.querySelector(s);
@@ -21,8 +22,76 @@ function h(tag, props, ...kids) {
   }
   for (const c of kids.flat(Infinity)) if (c != null && c !== false && c !== '') e.append(c);
   if (value !== undefined) e.value = value;
+  if (tag === 'input' && e.type === 'range') fillRange(e);
   return e;
 }
+
+// 24×24 stroke icons
+const ICONS = {
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
+  sun: '<circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  replace: '<path d="M20 11a8 8 0 0 0-14.3-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.5L20 16"/><path d="M20 20v-4h-4"/>',
+  download: '<path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/>',
+  trash: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
+  play: '<path d="M8.5 5.5v13l10.5-6.5z" fill="currentColor"/>',
+  pause: '<path d="M8.5 6v12M15.5 6v12" stroke-width="3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  chevL: '<path d="m14 6-6 6 6 6"/>',
+  chevR: '<path d="m10 6 6 6-6 6"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  pointer: '<path d="M5 3.5 18.5 11l-6 1.5-2 6z"/>',
+  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor"/>',
+  sliders: '<path d="M3 8h9M17 8h4M3 16h4M12 16h9"/><circle cx="14.5" cy="8" r="2.5"/><circle cx="9.5" cy="16" r="2.5"/>',
+  rings: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/>',
+  numbers: '<text x="12" y="16" text-anchor="middle" fill="currentColor" stroke="none">123</text>',
+  burst: '<path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" fill="currentColor"/>',
+  monitor: '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/>',
+  pausec: '<circle cx="12" cy="12" r="8.5"/><path d="M10 9v6M14 9v6"/>',
+  list: '<rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M8 9h8M8 12.5h8M8 16h5"/>',
+  trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.500a3 3 0 0 1-3.5 4"/><path d="M12 13v4M8.5 20h7M10 17h4"/>',
+  gear: '<circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 3v3.500M12 17.500V21M3 12h3.500M17.5 12H21M5.6 5.600l2.5 2.500M15.9 15.900l2.5 2.500M5.6 18.400l2.5-2.500M15.9 8.100l2.5-2.5"/>',
+  drum: '<ellipse cx="12" cy="8" rx="8" ry="3.5"/><path d="M4 8v8c0 2 3.6 3.5 8 3.500s8-1.5 8-3.500V8"/>',
+  fruit: '<path d="M12 8c-3-2-7 0-7 5s3.5 7.5 7 6c3.5 1.5 7-1 7-6s-4-7-7-5z"/><path d="M12 8c0-2 1-3.5 3-4"/>',
+  columns: '<rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="16" y="4" width="4" height="16" rx="1"/>',
+  music: '<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+  volume: '<path d="M4 10v4h3l5 4V6l-5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.500a8 8 0 0 1 0 11"/>',
+  file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
+};
+
+function icon(name, cls = '') {
+  const s = document.createElement('span');
+  s.className = `ic ${cls}`.trim();
+  s.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+  return s;
+}
+
+// short label, icon and accent colour of each category chip
+const CAT_META = {
+  all: ['All', 'grid', '#8b8ff7'],
+  cursor: ['Cursor', 'pointer', '#6c70f2'],
+  circles: ['Hit circles', 'target', '#f0609a'],
+  sliders: ['Sliders', 'sliders', '#f59a4a'],
+  spinner: ['Spinner', 'rings', '#8e7bf0'],
+  numbers: ['Numbers', 'numbers', '#2fbf8f'],
+  judgements: ['Hit bursts', 'burst', '#f5b82e'],
+  hud: ['HUD', 'monitor', '#4aa3f0'],
+  pause: ['Pause & fail', 'pausec', '#9b7bea'],
+  menu: ['Menu', 'list', '#ef6a8a'],
+  ranking: ['Ranking', 'trophy', '#7d86f0'],
+  mods: ['Mod icons', 'gear', '#f0705a'],
+  taiko: ['osu!taiko', 'drum', '#e8604c'],
+  catch: ['osu!catch', 'fruit', '#4fc46a'],
+  mania: ['osu!mania', 'columns', '#b06ae8'],
+  'sounds-hit': ['Hitsounds', 'music', '#35c28a'],
+  'sounds-ui': ['UI sounds', 'volume', '#3fb4d8'],
+  other: ['Other files', 'file', '#8a86a8'],
+};
 
 const S = {
   loaded: false,
@@ -37,7 +106,9 @@ const S = {
   search: '',
   missingOnly: false,
   undo: [],
+  redo: [],
   adj: { ...DEFAULT_ADJ },
+  aud: { gain: 100, delay: 0 },
   gen: null,
   iniSec: 'General',
   maniaKeys: 4,
@@ -53,10 +124,17 @@ const stemOf = p => p.replace(/\.[^./]+$/, '');
 const extOf = p => (p.match(/\.[^./]+$/) || [''])[0];
 const fmtSize = n => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const fileBytes = async f => new Uint8Array(await f.arrayBuffer());
+const catLabel = id => (CATEGORIES.find(c => c[0] === id) || [])[1];
 
 const urlOf = rec => (rec.url ||= URL.createObjectURL(new Blob([rec.bytes], { type: mimeOf(rec.path) })));
 function decode(rec) {
   return (rec.bmpP ||= createImageBitmap(new Blob([rec.bytes], { type: mimeOf(rec.path) })).then(b => (rec.bmp = b)));
+}
+
+// the filled part of a range track is drawn from the --p custom property
+function fillRange(r) {
+  const min = Number(r.min || 0), max = Number(r.max || 100);
+  r.style.setProperty('--p', `${((Number(r.value) - min) / (max - min || 1)) * 100}%`);
 }
 
 let toastTimer;
@@ -75,6 +153,7 @@ function download(blob, name) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
+const downloadRec = rec => download(new Blob([rec.bytes], { type: mimeOf(rec.path) }), rec.path.split('/').pop());
 
 function pickFiles(accept, opts = {}) {
   return new Promise(resolve => {
@@ -85,7 +164,7 @@ function pickFiles(accept, opts = {}) {
   });
 }
 
-// ───────────────────────── file store + undo ─────────────────────────
+// ───────────────────────── file store + undo / redo ─────────────────────────
 
 function setFile(path, bytes, batch) {
   const k = keyOf(path);
@@ -101,17 +180,32 @@ function delFile(path, batch) {
 }
 
 function commit(batch) {
-  if (batch.length) S.undo.push(batch);
+  if (batch.length) { S.undo.push(batch); S.redo = []; }
   refresh();
+}
+
+/** Restores the state recorded in a batch and returns the batch that reverts it again. */
+function applyBatch(batch) {
+  const inverse = [];
+  for (const { k, prev } of [...batch].reverse()) {
+    inverse.push({ k, prev: S.files.get(k) });
+    if (prev) S.files.set(k, prev);
+    else S.files.delete(k);
+  }
+  return inverse;
 }
 
 function undo() {
   const batch = S.undo.pop();
   if (!batch) return;
-  for (const { k, prev } of batch.reverse()) {
-    if (prev) S.files.set(k, prev);
-    else S.files.delete(k);
-  }
+  S.redo.push(applyBatch(batch));
+  refresh();
+}
+
+function redo() {
+  const batch = S.redo.pop();
+  if (!batch) return;
+  S.undo.push(applyBatch(batch));
   refresh();
 }
 
@@ -152,7 +246,6 @@ function reindex() {
 
 function refresh() {
   reindex();
-  $('#btnUndo').disabled = !S.undo.length;
   render();
 }
 
@@ -182,10 +275,11 @@ function loadEntries(list, fallbackName) {
   if (list.length) iniSet(S.ini, 'General', 'Name', `${name} (custom)`);
   else {
     iniSet(S.ini, 'General', 'Name', name);
-    iniSet(S.ini, 'General', 'Author', '');
     iniSet(S.ini, 'General', 'Version', 'latest');
   }
-  Object.assign(S, { loaded: true, undo: [], sel: null, cat: 'all', tab: 'elements' });
+  Object.assign(S, { loaded: true, undo: [], redo: [], sel: null, cat: 'all', tab: 'elements', search: '', missingOnly: false });
+  $('#search').value = '';
+  $('#missingOnly').checked = false;
   syncTop();
   refresh();
   if (list.length) toast(`Loaded ${S.files.size} files`);
@@ -277,30 +371,49 @@ function syncTop() {
 
 function render() {
   $('#welcome').hidden = S.loaded;
-  $('#tabs').hidden = !S.loaded;
-  for (const el of ['#skinName', '#skinAuthor', '#btnExport']) $(el).disabled = !S.loaded;
+  $('#work').hidden = !S.loaded;
+  $('#tabs').hidden = $('#progress').hidden = !S.loaded;
+  for (const id of ['#skinName', '#skinAuthor', '#btnExport']) $(id).disabled = !S.loaded;
+  $('#btnUndo').disabled = !S.undo.length;
+  $('#btnRedo').disabled = !S.redo.length;
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.tab === S.tab);
-  for (const t of ['elements', 'ini', 'preview', 'files']) $(`#view-${t}`).hidden = !S.loaded || S.tab !== t;
-  if (S.tab === 'preview' && S.loaded) preview.start();
+  for (const t of ['elements', 'ini', 'files']) $(`#view-${t}`).hidden = S.tab !== t;
+  $('#chipsRow').hidden = $('#insp').hidden = S.tab !== 'elements';
+  if (S.loaded) preview.start();
   else preview.stop();
   if (!S.loaded) return;
-  if (S.tab === 'elements') { renderSide(); renderGrid(); renderInspector(); }
+  renderProgress();
+  if (S.tab === 'elements') { renderChips(); renderGrid(); renderInspector(); }
   if (S.tab === 'ini') renderIni();
   if (S.tab === 'files') renderFiles();
 }
 
-function renderSide() {
-  const row = (id, label, els) => {
+function renderProgress() {
+  const known = S.elements.filter(e => e.cat !== 'other');
+  const have = known.filter(e => e.variants.length).length;
+  const p = $('#progress');
+  p.querySelector('.bar').style.width = `calc(${(have / (known.length || 1)) * 100}% - 8px)`;
+  p.querySelector('span').textContent = `${have} / ${known.length} elements`;
+  p.title = `${have} of ${known.length} skinnable elements present, ${S.files.size} files in total`;
+}
+
+function renderChips() {
+  const chip = (id, els) => {
+    const [label, ic, color] = CAT_META[id];
     const have = els.filter(e => e.variants.length).length;
-    return h('button', { class: S.cat === id ? 'on' : '', onclick: () => { S.cat = id; renderSide(); renderGrid(); } },
-      h('span', {}, label), h('span', { class: 'cnt' + (have === els.length ? ' full' : '') }, `${have}/${els.length}`));
+    return h('button', { class: 'chip' + (S.cat === id ? ' on' : ''), style: `--c:${color}`, title: catLabel(id) || 'All elements',
+      onclick: () => { S.cat = id; renderChips(); renderGrid(); } },
+      icon(ic), h('span', {}, h('b', {}, label), h('small', {}, `${have}/${els.length}`)),
+      have === els.length && id !== 'other' && icon('check', 'done'));
   };
-  const rows = [row('all', 'All elements', S.elements)];
-  for (const [id, label] of CATEGORIES) {
+  const chips = [chip('all', S.elements)];
+  for (const [id] of CATEGORIES) {
     const els = S.elements.filter(e => e.cat === id);
-    if (els.length) rows.push(row(id, label, els));
+    if (els.length) chips.push(chip(id, els));
   }
-  $('#side').replaceChildren(...rows);
+  const box = $('#chips'), x = box.scrollLeft;
+  box.replaceChildren(...chips);
+  box.scrollLeft = x;
 }
 
 const audio = new Audio();
@@ -315,31 +428,30 @@ function renderGrid() {
   const nodes = list.map(el => {
     const k = elKey(el), v = el.variants[0];
     let thumb;
-    if (!v) thumb = '+';
+    if (!v) thumb = h('div', { class: 'plus' }, icon('plus'));
     else if (el.kind === 'img') thumb = h('img', { loading: 'lazy', src: urlOf(v.rec), alt: '' });
-    else if (el.kind === 'snd') thumb = h('button', { title: 'Play', onclick: e => { e.stopPropagation(); play(v.rec); } }, '▶');
-    else thumb = '≡';
+    else if (el.kind === 'snd') thumb = h('button', { class: 'thumbbtn', title: 'Play', onclick: e => { e.stopPropagation(); play(v.rec); } }, icon('play'));
+    else thumb = icon('file', 'thumbic');
     const frames = el.variants.filter(x => x.frame != null && !x.hd).length || el.variants.filter(x => x.frame != null).length;
-    const card = h('div', { class: 'card' + (v ? '' : ' missing') + (S.sel === k ? ' sel' : ''), title: el.desc || el.name, onclick: () => select(k) },
-      h('div', { class: 'thumb' + (el.kind === 'img' && v ? ' checker' : '') }, thumb),
+    const card = h('div', { class: 'el' + (v ? '' : ' missing') + (S.sel === k ? ' sel' : ''), title: el.desc || el.name, onclick: () => select(k) },
+      h('div', { class: 'thumb checker' }, thumb),
       h('div', { class: 'nm' }, el.name),
       h('div', { class: 'badges' },
         !v && h('span', { class: 'badge miss' }, 'missing'),
         el.variants.some(x => x.hd) && h('span', { class: 'badge hd' }, '@2x'),
-        frames > 0 && h('span', { class: 'badge anim' }, `${frames} frames`)));
+        frames > 0 && h('span', { class: 'badge anim' }, `${frames} frames`),
+        v && el.kind === 'snd' && h('span', { class: 'badge' }, extOf(v.rec.path).slice(1))));
     cards.set(k, card);
     return card;
   });
-  $('#grid').replaceChildren(...nodes);
-  const have = S.elements.filter(e => e.cat !== 'other' && e.variants.length).length;
-  const total = S.elements.filter(e => e.cat !== 'other').length;
-  $('#stat').textContent = `${have} of ${total} skinnable elements present · ${S.files.size} files`;
+  $('#grid').replaceChildren(...(nodes.length ? nodes : [h('div', { class: 'empty' }, 'Nothing matches. Try another category or clear the search.')]));
 }
 
 function select(k) {
   cards.get(S.sel)?.classList.remove('sel');
   S.sel = k;
   S.adj = { ...DEFAULT_ADJ };
+  S.aud = { gain: 100, delay: 0 };
   S.gen = null;
   cards.get(k)?.classList.add('sel');
   renderInspector();
@@ -350,16 +462,15 @@ function select(k) {
 function renderInspector() {
   const box = $('#insp'), el = S.byKey.get(S.sel);
   if (!el) {
-    box.replaceChildren(h('p', { class: 'hint' },
-      'Select an element to edit it. Dashed cards are elements this skin does not have yet: click one to upload or generate it. You can also drop image and sound files anywhere to add them.'));
+    box.replaceChildren(h('div', { class: 'inspEmpty' }, h('h2', {}, 'Pick an element'),
+      'Select a card to edit it. Dashed cards are elements this skin does not have yet: click one to upload or generate it. You can also drop image and sound files anywhere to add them.'));
     return;
   }
-  const cat = CATEGORIES.find(c => c[0] === el.cat);
   const parts = [
     h('h2', {}, el.name),
     el.desc && h('div', { class: 'desc' }, el.desc),
     h('div', { class: 'badges' },
-      h('span', { class: 'badge' }, cat ? cat[1] : el.cat),
+      h('span', { class: 'badge' }, catLabel(el.cat) || el.cat),
       el.anim && h('span', { class: 'badge anim' }, 'animatable'),
       !el.variants.length && h('span', { class: 'badge miss' }, 'missing')),
   ];
@@ -422,12 +533,12 @@ function variantRow(v) {
   const kind = kindOf(v.rec.path), dims = h('span', {}, fmtSize(v.rec.bytes.length));
   const mini = kind === 'img'
     ? h('div', { class: 'mini checker' }, h('img', { src: urlOf(v.rec), alt: '', onload: e => { dims.textContent = `${e.target.naturalWidth}×${e.target.naturalHeight} · ${fmtSize(v.rec.bytes.length)}`; } }))
-    : kind === 'snd' ? h('button', { class: 'sm', onclick: () => play(v.rec) }, '▶') : null;
+    : kind === 'snd' ? h('button', { class: 'icon', title: 'Play', onclick: () => play(v.rec) }, icon('play')) : null;
   return h('div', { class: 'vrow' }, mini,
     h('div', { class: 'vinfo' }, h('div', { title: v.rec.path }, v.rec.path), dims),
-    h('button', { class: 'sm', title: 'Replace with a file', onclick: () => replaceVariant(v) }, 'Replace'),
-    h('button', { class: 'sm', title: 'Download', onclick: () => download(new Blob([v.rec.bytes], { type: mimeOf(v.rec.path) }), v.rec.path.split('/').pop()) }, '↓'),
-    h('button', { class: 'sm danger', title: 'Delete', onclick: () => { const b = []; delFile(v.rec.path, b); commit(b); } }, '✕'));
+    h('button', { class: 'icon', title: 'Replace with a file', onclick: () => replaceVariant(v) }, icon('replace')),
+    h('button', { class: 'icon', title: 'Download', onclick: () => downloadRec(v.rec) }, icon('download')),
+    h('button', { class: 'icon del', title: 'Delete', onclick: () => { const b = []; delFile(v.rec.path, b); commit(b); } }, icon('trash')));
 }
 
 // Creates the @2x file for every 1x-only variant and the other way round.
@@ -478,41 +589,37 @@ function imageInspector(el) {
     return h('label', { class: 'sl' }, h('span', {}, label),
       h('input', { type: 'range', min, max, value: A[key], oninput: e => { A[key] = Number(e.target.value); val.textContent = A[key] + unit; drawAdjPreview(el); } }), val);
   };
-  const toggle = (label, key) => h('label', {}, h('input', { type: 'checkbox', checked: A[key], onchange: e => { A[key] = e.target.checked; drawAdjPreview(el); } }), ' ' + label);
+  const toggle = (label, key) => h('label', {}, h('input', { type: 'checkbox', checked: A[key], onchange: e => { A[key] = e.target.checked; drawAdjPreview(el); } }), label);
   const inCat = S.elements.filter(e => e.cat === el.cat && e.kind === 'img' && e.variants.length);
 
   return [
-    has && h('div', { class: 'stage checker' }, h('canvas', { id: 'adjCanvas' })),
-    has && [h('h3', {}, 'Files'), el.variants.map(variantRow)],
+    has && el.variants.map(variantRow),
     h('div', { class: 'row' },
-      h('button', { onclick: () => addToElement(el, true) }, has ? 'Upload @2x…' : 'Upload image (@2x)…'),
-      h('button', { onclick: () => addToElement(el, false) }, has ? 'Upload 1x…' : 'Upload image (1x)…'),
-      has && h('button', { title: 'Create the missing 1x or @2x version of each file', onclick: () => fillPairs(el) }, 'Fill 1x / @2x'),
-      has && h('button', { class: 'danger', onclick: () => removeElement(el) }, 'Remove')),
+      h('button', { class: 'sm', onclick: () => addToElement(el, true) }, has ? 'Upload @2x…' : 'Upload image (@2x)…'),
+      h('button', { class: 'sm', onclick: () => addToElement(el, false) }, has ? 'Upload 1x…' : 'Upload image (1x)…'),
+      has && h('button', { class: 'sm', title: 'Create the missing 1x or @2x version of each file', onclick: () => fillPairs(el) }, 'Fill 1x / @2x'),
+      has && h('button', { class: 'sm danger', onclick: () => removeElement(el) }, 'Remove')),
     has && [
-      h('h3', {}, 'Adjust'),
+      h('div', { class: 'stage checker' }, h('canvas', { id: 'adjCanvas' })),
       slider('Hue', 'hue', -180, 180, '°'), slider('Saturation', 'sat', 0, 300, '%'),
       slider('Brightness', 'bri', 0, 300, '%'), slider('Contrast', 'con', 0, 300, '%'),
-      slider('Opacity', 'opa', 0, 100, '%'),
+      slider('Opacity', 'opa', 0, 100, '%'), slider('Size', 'scale', 10, 400, '%'),
       h('label', { class: 'sl' }, h('span', {}, 'Colorize'),
         h('input', { type: 'range', min: 0, max: 100, value: A.tintAmt, oninput: e => { A.tintAmt = Number(e.target.value); drawAdjPreview(el); } }),
         h('input', { type: 'color', value: A.tint, oninput: e => { A.tint = e.target.value; drawAdjPreview(el); } })),
-      slider('Size', 'scale', 10, 400, '%'),
       h('label', { class: 'sl' }, h('span', {}, 'Rotate'),
         h('select', { value: String(A.rot), onchange: e => { A.rot = Number(e.target.value); drawAdjPreview(el); } },
           [0, 90, 180, 270].map(d => h('option', { value: String(d) }, `${d}°`))), h('span')),
-      h('div', { class: 'row' }, toggle('Flip horizontal', 'flipH'), toggle('Flip vertical', 'flipV')),
-      h('div', { class: 'row' },
+      h('div', { class: 'checks' }, toggle('Flip horizontal', 'flipH'), toggle('Flip vertical', 'flipV')),
+      h('div', { class: 'actions' },
         h('button', { class: 'primary', onclick: () => applyAdjust([el]) }, 'Apply'),
         h('button', { onclick: () => { S.adj = { ...DEFAULT_ADJ }; renderInspector(); } }, 'Reset'),
-        cat(el) && h('button', { title: 'Apply these adjustments to every image in this category',
-          onclick: () => confirm(`Apply to all ${inCat.length} elements in "${cat(el)}"?`) && applyAdjust(inCat) }, `Apply to category (${inCat.length})`)),
+        h('button', { title: 'Apply these adjustments to every image in this category',
+          onclick: () => confirm(`Apply to all ${inCat.length} elements in "${catLabel(el.cat)}"?`) && applyAdjust(inCat) }, `Apply to category (${inCat.length})`)),
     ],
     generatorBlock(el),
   ];
 }
-
-const cat = el => (CATEGORIES.find(c => c[0] === el.cat) || [])[1];
 
 function generatorBlock(el) {
   const G = (S.gen ||= presetFor(el.name));
@@ -537,7 +644,7 @@ function generatorBlock(el) {
   return h('details', { open: !el.variants.length },
     h('summary', {}, el.variants.length ? 'Generate a replacement' : 'Generate this element'),
     pick('Shape', 'type', GEN_TYPES),
-    h('label', { class: 'fld' }, h('span', {}, 'Colours'), h('span', { class: 'row' },
+    h('label', { class: 'fld' }, h('span', {}, 'Colours'), h('span', { class: 'row', style: 'margin:0' },
       h('input', { type: 'color', value: G.color, title: 'Fill', oninput: e => { G.color = e.target.value; redraw(); } }),
       h('input', { type: 'color', value: G.color2, title: 'Outline', oninput: e => { G.color2 = e.target.value; redraw(); } }))),
     field('Width @2x', 'w', 'number', { min: 1, max: 4096 }),
@@ -545,12 +652,47 @@ function generatorBlock(el) {
     field('Thickness', 'thick', 'number', { min: 0, max: 200 }),
     field('Text', 'text', 'text'),
     pick('Font', 'font', FONTS),
-    h('div', { class: 'stage checker', style: 'margin-top:8px' }, cv),
+    h('div', { class: 'stage checker' }, cv),
     h('div', { class: 'hint' }, 'Sizes are for the @2x file; a 1x copy is created too. "blank" writes a 1×1 transparent image, which hides the element in game.'),
     h('div', { class: 'row' }, h('button', { class: 'primary', onclick: save }, 'Generate & save')));
 }
 
+const audParams = () => ({ gain: S.aud.gain / 100, delayMs: S.aud.delay });
+
+async function previewSound(el) {
+  try {
+    playAudio(processAudio(await decodeAudio(el.variants[0].rec.bytes), audParams()));
+  } catch {
+    toast('This sound could not be decoded');
+  }
+}
+
+async function applySound(els) {
+  const batch = [];
+  let failed = 0;
+  for (const el of els) {
+    for (const v of el.variants) {
+      try {
+        const out = encodeWav(processAudio(await decodeAudio(v.rec.bytes), audParams()));
+        const path = stemOf(v.rec.path) + '.wav';
+        if (keyOf(path) !== keyOf(v.rec.path)) delFile(v.rec.path, batch);
+        setFile(path, out, batch);
+      } catch { failed++; }
+    }
+  }
+  S.aud = { gain: 100, delay: 0 };
+  commit(batch);
+  toast(`Updated ${els.length - failed} sound(s)` + (failed ? `, ${failed} could not be decoded` : ''));
+}
+
 function soundInspector(el) {
+  const has = el.variants.length > 0, A = S.aud;
+  const slider = (label, key, min, max, step, fmt) => {
+    const val = h('span', { class: 'val' }, fmt(A[key]));
+    return h('label', { class: 'sl' }, h('span', {}, label),
+      h('input', { type: 'range', min, max, step, value: A[key], oninput: e => { A[key] = Number(e.target.value); val.textContent = fmt(A[key]); } }), val);
+  };
+  const inCat = S.elements.filter(e => e.cat === el.cat && e.kind === 'snd' && e.variants.length);
   const silence = () => {
     const batch = [];
     for (const v of el.variants) delFile(v.rec.path, batch);
@@ -559,10 +701,21 @@ function soundInspector(el) {
   };
   return [
     el.variants.map(v => [variantRow(v), h('div', { class: 'vrow' }, h('audio', { controls: true, src: urlOf(v.rec) }))]),
-    h('div', { class: 'row' },
-      h('button', { onclick: () => addToElement(el, false) }, el.variants.length ? 'Replace sound…' : 'Upload sound…'),
+    h('div', { class: 'actions' },
+      h('button', { class: 'primary', onclick: () => addToElement(el, false) }, el.variants.length ? 'Replace sound…' : 'Upload sound…'),
       h('button', { title: 'Write a silent wav so this sound is muted in game', onclick: silence }, 'Make silent'),
-      el.variants.length > 0 && h('button', { class: 'danger', onclick: () => removeElement(el) }, 'Remove')),
+      h('button', { class: 'danger', disabled: !has, onclick: () => removeElement(el) }, 'Remove')),
+    has && [
+      h('h3', {}, 'Edit sound'),
+      slider('Volume', 'gain', 0, 400, 5, v => `${v}%`),
+      slider('Delay', 'delay', -300, 300, 5, v => `${v > 0 ? '+' : ''}${v} ms`),
+      h('div', { class: 'hint' }, 'Positive delay adds silence so the sound plays later; negative delay trims the start so it plays earlier. Edited sounds are saved as wav.'),
+      h('div', { class: 'actions' },
+        h('button', { class: 'primary', onclick: () => applySound([el]) }, 'Apply'),
+        h('button', { onclick: () => previewSound(el) }, icon('play'), 'Preview'),
+        h('button', { title: 'Apply this volume and delay to every sound in this category',
+          onclick: () => confirm(`Apply to all ${inCat.length} sounds in "${catLabel(el.cat)}"?`) && applySound(inCat) }, `Apply to category (${inCat.length})`)),
+    ],
   ];
 }
 
@@ -590,6 +743,7 @@ function fileInspector(el) {
 function iniChanged() {
   syncTop();
   reindex(); // font prefixes change which elements exist
+  renderProgress();
 }
 
 function iniRow(section, [key, type, def, desc, options], maniaKeys) {
@@ -614,33 +768,36 @@ function iniRow(section, [key, type, def, desc, options], maniaKeys) {
     } });
     const sync = () => { pick.value = rgbToHex(parseColour(text.value) || parseColour(def) || [255, 255, 255]); };
     sync();
-    ctl = [pick, text, h('button', { class: 'sm', title: 'Use the default', onclick: () => { text.value = ''; set(''); sync(); } }, '✕')];
+    ctl = [pick, text, h('button', { class: 'icon del', title: 'Use the default', onclick: () => { text.value = ''; set(''); sync(); } }, icon('trash'))];
   } else {
     ctl = h('input', { type: 'text', inputMode: type === 'num' ? 'decimal' : 'text', value: cur, placeholder: def || 'not set', oninput: e => set(e.target.value) });
   }
-  row.append(h('div', { class: 'k' }, key), h('div', { class: 'ctl' }, ctl), h('div', { class: 'desc' }, desc || ''));
+  row.append(h('div', { class: 'k', title: key }, key), h('div', { class: 'ctl' }, ctl), h('div', { class: 'desc' }, desc || ''));
   return row;
 }
 
 function renderIni() {
   const sections = [...Object.keys(SCHEMA), 'Mania', 'Raw text'];
-  const nav = h('div', { class: 'subnav' }, sections.map(s =>
-    h('button', { class: s === S.iniSec ? 'on' : '', onclick: () => { S.iniSec = s; renderIni(); } }, s === 'Raw text' ? s : `[${s}]`)));
+  const nav = h('div', { class: 'pagehead' }, h('h2', {}, 'skin.ini'), h('div', { class: 'seg wrap' }, sections.map(s =>
+    h('button', { class: s === S.iniSec ? 'on' : '', onclick: () => { S.iniSec = s; renderIni(); } }, s === 'Raw text' ? s : `[${s}]`))));
   let body;
   if (S.iniSec === 'Raw text') {
     const ta = h('textarea', { class: 'raw', spellcheck: false, value: serializeIni(S.ini), oninput: () => { S.ini = parseIni(ta.value); iniChanged(); } });
-    body = [h('p', { class: 'hint' }, 'Edit skin.ini directly. Keys this editor does not know about are kept as they are.'), ta];
+    body = [h('div', { class: 'hint' }, 'Edit skin.ini directly. Keys this editor does not know about are kept as they are.'), ta];
   } else if (S.iniSec === 'Mania') {
     const has = k => S.ini.sections.some(s => s.name.toLowerCase() === 'mania' && s.lines.some(l => l.key && l.key.toLowerCase() === 'keys' && Number(l.value) === k));
     body = [
-      h('div', { class: 'subnav' }, h('span', { class: 'hint' }, 'Key count:'), MANIA_KEYS.map(k =>
-        h('button', { class: 'sm' + (k === S.maniaKeys ? ' on' : ''), onclick: () => { S.maniaKeys = k; renderIni(); } }, `${k}K${has(k) ? ' •' : ''}`))),
+      h('div', { class: 'pagehead' }, h('span', { class: 'hint' }, 'Key count'), h('div', { class: 'seg wrap' }, MANIA_KEYS.map(k =>
+        h('button', { class: k === S.maniaKeys ? 'on' : '', onclick: () => { S.maniaKeys = k; renderIni(); } }, `${k}K${has(k) ? ' •' : ''}`)))),
       h('div', {}, maniaSchema(S.maniaKeys).map(f => iniRow('Mania', f, S.maniaKeys))),
     ];
   } else {
-    body = h('div', {}, SCHEMA[S.iniSec].map(f => iniRow(S.iniSec, f)));
+    body = [
+      h('div', { class: 'hint' }, 'Empty fields are left out of the file, so the game default applies. Changes show in the live preview right away.'),
+      h('div', {}, SCHEMA[S.iniSec].map(f => iniRow(S.iniSec, f))),
+    ];
   }
-  $('#view-ini').replaceChildren(nav, ...[body].flat());
+  $('#view-ini').replaceChildren(nav, ...body);
 }
 
 // ───────────────────────── files tab ─────────────────────────
@@ -649,7 +806,7 @@ function renderFiles() {
   const recs = [...S.files.values()].sort((a, b) => a.path.localeCompare(b.path));
   const rename = rec => {
     const to = prompt('New file name', rec.path);
-    if (!to || to === rec.path) return;
+    if (!to || !to.trim() || to === rec.path) return;
     const batch = [];
     delFile(rec.path, batch);
     setFile(to.trim(), rec.bytes, batch);
@@ -665,8 +822,8 @@ function renderFiles() {
   };
   const total = recs.reduce((a, r) => a + r.bytes.length, 0);
   $('#view-files').replaceChildren(
-    h('div', { class: 'subnav' },
-      h('button', { onclick: async () => { const f = await pickFiles('', { multiple: true }); if (f.length) addLooseFiles(f); } }, 'Add files…'),
+    h('div', { class: 'pagehead' }, h('h2', {}, 'All files'),
+      h('button', { class: 'primary', onclick: async () => { const f = await pickFiles('', { multiple: true }); if (f.length) addLooseFiles(f); } }, icon('plus'), 'Add files'),
       h('span', { class: 'hint' }, `${recs.length} files, ${fmtSize(total)}. skin.ini is written from the skin.ini tab when you save.`)),
     h('table', { class: 'files' },
       h('thead', {}, h('tr', {}, h('th', {}, 'File'), h('th', {}, 'Type'), h('th', {}, 'Size'), h('th', {}))),
@@ -675,8 +832,8 @@ function renderFiles() {
         h('td', { class: 'act' },
           h('button', { class: 'sm', onclick: () => show(rec) }, 'Edit'),
           h('button', { class: 'sm', onclick: () => rename(rec) }, 'Rename'),
-          h('button', { class: 'sm', onclick: () => download(new Blob([rec.bytes], { type: mimeOf(rec.path) }), rec.path.split('/').pop()) }, '↓'),
-          h('button', { class: 'sm danger', onclick: () => { const b = []; delFile(rec.path, b); commit(b); } }, '✕')))))));
+          h('button', { class: 'icon', title: 'Download', onclick: () => downloadRec(rec) }, icon('download')),
+          h('button', { class: 'icon del', title: 'Delete', onclick: () => { const b = []; delFile(rec.path, b); commit(b); } }, icon('trash'))))))));
 }
 
 // ───────────────────────── preview ─────────────────────────
@@ -708,24 +865,55 @@ const preview = new Preview($('#pv'), {
 
 // ───────────────────────── wiring ─────────────────────────
 
+for (const n of document.querySelectorAll('[data-icon]')) n.replaceChildren(icon(n.dataset.icon));
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem('osh-theme', theme); } catch { /* storage unavailable */ }
+  for (const b of document.querySelectorAll('#theme button')) b.classList.toggle('on', b.dataset.theme === theme);
+}
+for (const b of document.querySelectorAll('#theme button')) b.addEventListener('click', () => setTheme(b.dataset.theme));
+setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+
 const doImport = async () => { const [f] = await pickFiles('.osk,.zip'); if (f && await confirmReplace()) importZip(f); };
 const doFolder = async () => { const f = await pickFiles('', { directory: true }); if (f.length && await confirmReplace()) importFolder(f); };
 const doNew = async () => { if (await confirmReplace()) loadEntries([], 'New Skin'); };
 for (const id of ['#btnImport', '#wImport']) $(id).addEventListener('click', doImport);
 for (const id of ['#btnFolder', '#wFolder']) $(id).addEventListener('click', doFolder);
 for (const id of ['#btnNew', '#wNew']) $(id).addEventListener('click', doNew);
+$('#btnOpen').addEventListener('click', e => { e.stopPropagation(); $('#openMenu').hidden = !$('#openMenu').hidden; });
+addEventListener('click', () => { $('#openMenu').hidden = true; });
+
 $('#btnUndo').addEventListener('click', undo);
+$('#btnRedo').addEventListener('click', redo);
 $('#btnExport').addEventListener('click', exportSkin);
 $('#skinName').addEventListener('input', e => iniSet(S.ini, 'General', 'Name', e.target.value));
 $('#skinAuthor').addEventListener('input', e => iniSet(S.ini, 'General', 'Author', e.target.value));
 $('#search').addEventListener('input', e => { S.search = e.target.value; renderGrid(); });
 $('#missingOnly').addEventListener('change', e => { S.missingOnly = e.target.checked; renderGrid(); });
-$('#pvCs').addEventListener('input', e => { preview.cs = Number(e.target.value); });
-$('#pvBg').addEventListener('input', e => { preview.bg = e.target.value; });
+$('#chipL').addEventListener('click', () => $('#chips').scrollBy({ left: -420 }));
+$('#chipR').addEventListener('click', () => $('#chips').scrollBy({ left: 420 }));
 for (const b of document.querySelectorAll('#tabs button')) b.addEventListener('click', () => { S.tab = b.dataset.tab; render(); });
 
+$('#pvCs').addEventListener('input', e => { preview.cs = Number(e.target.value); });
+$('#pvBg').addEventListener('input', e => { preview.bg = e.target.value; });
+$('#pvPlay').addEventListener('click', () => {
+  preview.paused = !preview.paused;
+  $('#pvPlay').replaceChildren(icon(preview.paused ? 'play' : 'pause'));
+});
+const SPEEDS = [0.25, 0.5, 1, 1.5, 2];
+$('#pvSpeed').addEventListener('click', () => {
+  preview.speed = SPEEDS[(SPEEDS.indexOf(preview.speed) + 1) % SPEEDS.length];
+  $('#pvSpeed').textContent = `${preview.speed.toFixed(preview.speed % 1 === 0.25 || preview.speed % 1 === 0.75 ? 2 : 1)}x`;
+});
+
+fillRange($('#pvCs'));
+addEventListener('input', e => { if (e.target.type === 'range') fillRange(e.target); });
 addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { e.preventDefault(); undo(); }
+  if (!(e.ctrlKey || e.metaKey) || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
 });
 addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
 addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
