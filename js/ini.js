@@ -1,6 +1,16 @@
 // skin.ini parser / serializer that keeps unknown keys, comments and order,
 // plus the schema used to build the settings form.
 
+/** Decodes a text file; osu! skins often ship skin.ini as UTF-16 (with or without BOM). */
+export function decodeText(bytes) {
+  let enc = 'utf-8';
+  if (bytes[0] === 0xFF && bytes[1] === 0xFE) enc = 'utf-16le';
+  else if (bytes[0] === 0xFE && bytes[1] === 0xFF) enc = 'utf-16be';
+  else if (bytes.length >= 4 && bytes[1] === 0 && bytes[3] === 0 && bytes[0] !== 0) enc = 'utf-16le';
+  else if (bytes.length >= 4 && bytes[0] === 0 && bytes[2] === 0 && bytes[1] !== 0) enc = 'utf-16be';
+  return new TextDecoder(enc).decode(bytes);
+}
+
 export function parseIni(text) {
   const sections = [{ name: '', lines: [] }];
   for (const raw of text.replace(/^﻿/, '').split(/\r?\n/)) {
