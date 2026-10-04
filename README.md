@@ -1,18 +1,80 @@
-# OSH · Osu Skin Homie
+<p align="center">
+  <img src="docs/img/banner.png" alt="OSH, Osu Skin Homie" width="820">
+</p>
 
-A free, open-source skin editor and creator for **osu!lazer** (and osu!stable) that runs entirely in your browser.
+<p align="center">
+  <a href="https://chalupkavisuals.github.io/OSH/"><img src="https://img.shields.io/badge/open%20the%20app-6c70f2?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open the app"></a>
+  <a href="https://github.com/ChalupkaVisuals/OSH/releases/latest"><img src="https://img.shields.io/github/v/release/ChalupkaVisuals/OSH?style=for-the-badge&color=7ee2c1&labelColor=2a2456" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ChalupkaVisuals/OSH?style=for-the-badge&color=ff8fc7&labelColor=2a2456" alt="MIT license"></a>
+  <a href="https://github.com/ChalupkaVisuals/OSH/stargazers"><img src="https://img.shields.io/github/stars/ChalupkaVisuals/OSH?style=for-the-badge&color=f5b82e&labelColor=2a2456" alt="GitHub stars"></a>
+</p>
 
-Load any skin, see exactly what it has and what it is missing, change every image, sound and `skin.ini` setting, watch the result in a live gameplay preview, and save it as a brand new `.osk`.
+<p align="center">
+  A free, open-source skin editor and creator for <b>osu!lazer</b> (and osu!stable) that runs entirely in your browser.<br>
+  Load any skin, see what it has and what it is missing, change every image, sound and <code>skin.ini</code> setting,<br>
+  watch the result in a live preview, and save it as a brand new <code>.osk</code>.
+</p>
 
-Nothing is uploaded anywhere. Your skin never leaves your computer.
+<p align="center">
+  <b>Nothing is uploaded anywhere. Your skin never leaves your computer.</b>
+</p>
 
-**Use it online:** https://chalupkavisuals.github.io/OSH/
-**Or run it locally:** see [Running locally](#running-locally).
+<p align="center">
+  <a href="https://chalupkavisuals.github.io/OSH/"><b>Use it online</b></a>
+  &nbsp;·&nbsp;
+  <a href="#quick-start">Quick start</a>
+  &nbsp;·&nbsp;
+  <a href="#guide">Guide</a>
+  &nbsp;·&nbsp;
+  <a href="#running-locally">Run locally</a>
+  &nbsp;·&nbsp;
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/editor-dark.png">
+    <img src="docs/img/editor-light.png" alt="The OSH editor: category chips, element grid, live preview and inspector" width="100%">
+  </picture>
+</p>
+
+## A quick look
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/img/generate.png" alt="Generating a missing element"><br>
+      <b>Fill in what is missing.</b> Dashed cards are elements your skin lacks. Upload one, or generate it from a shape or text.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/img/sounds.png" alt="Editing a hitsound"><br>
+      <b>Tune your sounds.</b> Make hitsounds louder or quieter and nudge their timing, one at a time or a whole category.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/img/skin-ini.png" alt="The skin.ini editor"><br>
+      <b>Every skin.ini setting.</b> Combo colours, fonts, cursor behaviour and all mania key counts, with defaults and descriptions.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/img/files.png" alt="The file manager"><br>
+      <b>Full control of the files.</b> Rename, add, download or delete anything, and edit lazer layout files as text.
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/img/preview.png" alt="Live gameplay preview" width="560"><br>
+  <sub>The live preview draws a looping osu! scene with your own textures, colours and fonts.</sub>
+</p>
+
+<sub>Screenshots show a demo skin made entirely with OSH's built-in generators.</sub>
 
 ---
 
 ## Contents
 
+- [A quick look](#a-quick-look)
 - [Features](#features)
 - [Quick start](#quick-start)
 - [Guide](#guide)
@@ -55,6 +117,9 @@ Nothing is uploaded anywhere. Your skin never leaves your computer.
 ## Quick start
 
 1. Open https://chalupkavisuals.github.io/OSH/ (or run OSH locally).
+
+   <img src="docs/img/welcome.png" alt="The OSH start screen" width="640">
+
 2. Drop your skin's `.osk` on the page.
    - In osu!lazer: `Settings → Skin → Export selected skin`, then find the file in the exports folder.
    - In osu!stable: zip your skin folder from `osu!/Skins/`, or just drop the folder itself.

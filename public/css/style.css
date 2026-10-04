@@ -4,7 +4,7 @@
   --ink: #2a2456; --text: #3d3868; --dim: #8d89aa;
   --primary: #6c70f2; --primary-2: #5a5ee6; --on-primary: #ffffff;
   --coral: #ff8f7a; --coral-soft: #fff0ec; --mint: #7ee2c1; --mint-ink: #136b50;
-  --check-a: #f4f2fa; --check-b: #ffffff;
+  --check-a: #e6e2f2; --check-b: #f4f2fa;
   --shadow: 0 10px 34px rgba(98, 90, 180, .10), 0 2px 6px rgba(98, 90, 180, .05);
   --display: "Baloo 2", "Quicksand", "Segoe UI", system-ui, sans-serif;
   --body: "Quicksand", "Segoe UI", system-ui, sans-serif;
@@ -84,7 +84,7 @@ input.switch:checked::after { left: 25px; }
 input[type=checkbox]:not(.switch) { accent-color: var(--primary); width: 16px; height: 16px; }
 
 .seg { display: flex; padding: 4px; gap: 2px; border-radius: 999px; background: var(--card); border: 1.5px solid var(--line); }
-.seg button { border: 0; background: none; padding: 8px 18px; color: var(--text); }
+.seg button { border: 0; background: none; padding: 8px 16px; color: var(--text); }
 .seg button.on { background: var(--primary); color: var(--on-primary); box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent); }
 .seg.theme button { width: 44px; height: 38px; padding: 0; font-size: 19px; color: var(--dim); }
 .seg.theme button.on { background: var(--soft); color: #f0a91a; box-shadow: none; }
@@ -93,7 +93,7 @@ input[type=checkbox]:not(.switch) { accent-color: var(--primary); width: 16px; h
 .seg.wrap button { padding: 6px 16px; }
 
 /* top bar */
-#top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 14px 22px; border-radius: 34px; flex: none; }
+#top { display: flex; gap: 10px; align-items: center; padding: 14px 22px; border-radius: 34px; flex: none; }
 .brand { display: flex; align-items: center; gap: 8px; margin-right: 10px; }
 .brand b { display: block; font: 800 34px/0.9 var(--display); color: var(--ink); letter-spacing: .5px; }
 .brand span { font-size: 14px; color: var(--ink); white-space: nowrap; }
@@ -107,7 +107,7 @@ input[type=checkbox]:not(.switch) { accent-color: var(--primary); width: 16px; h
 .field:focus-within { border-color: var(--primary); }
 .field span { font-size: 11px; color: var(--dim); }
 .field input { background: none; border: 0; padding: 0; border-radius: 0; font-size: 16px; font-weight: 700; color: var(--ink); width: 100%; }
-.progress { position: relative; flex: 0 1 230px; min-width: 150px; height: 40px; border-radius: 999px; background: var(--soft); border: 1.5px solid var(--line); overflow: hidden; }
+.progress { position: relative; flex: 0 1 220px; min-width: 150px; height: 40px; border-radius: 999px; background: var(--soft); border: 1.5px solid var(--line); overflow: hidden; }
 .progress .bar { position: absolute; inset: 4px auto 4px 4px; border-radius: 999px; background: var(--mint); min-width: 30px; transition: width .3s; }
 .progress span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--ink); }
 .menuwrap { position: relative; }
@@ -156,6 +156,8 @@ body.dragging .drop, body.dragging #left { outline: 3px dashed var(--primary); o
 .el.missing { border: 2px dashed color-mix(in srgb, var(--coral) 70%, var(--card)); }
 .el .thumb { aspect-ratio: 1; display: grid; place-items: center; border-radius: 12px; overflow: hidden; }
 .el .thumb img { max-width: 78%; max-height: 78%; }
+/* a faint outline keeps white skin elements visible on the light checkerboard */
+.el .thumb img, .vrow .mini img, .stage canvas { filter: drop-shadow(0 0 1px rgba(40, 30, 90, .6)); }
 .el .nm { font: 800 19px/1.2 var(--display); color: var(--ink); margin: 12px 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plus { width: 56px; height: 56px; border-radius: 50%; border: 2px dashed var(--coral); color: var(--coral); display: grid; place-items: center; font-size: 26px; }
 .thumbbtn { width: 56px; height: 56px; padding: 0; border: 0; font-size: 24px; background: var(--primary); color: var(--on-primary); }
@@ -174,7 +176,7 @@ body.dragging .drop, body.dragging #left { outline: 3px dashed var(--primary); o
 .pvcard h2 { margin-bottom: 10px; }
 .pvbox { position: relative; border-radius: 18px; overflow: hidden; line-height: 0; }
 #pv { width: 100%; aspect-ratio: 16 / 9; display: block; cursor: none; max-height: 30vh; background: #191530; }
-.pvbtns { position: absolute; left: 14px; bottom: 14px; display: flex; gap: 10px; align-items: center; line-height: 1; }
+.pvbtns { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 10px; align-items: center; line-height: 1; }
 .pvplay { width: 44px; height: 44px; padding: 0; border: 0; font-size: 22px; background: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .35); }
 .pvspeed { border: 0; padding: 6px 14px; background: rgba(255, 255, 255, .16); color: #fff; backdrop-filter: blur(6px); }
 .pvctl { display: flex; gap: 18px; align-items: center; margin-top: 12px; font-size: 13px; color: var(--dim); }
@@ -239,6 +241,8 @@ table.files td.act button { margin-left: 6px; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--track); border-radius: 99px; border: 2px solid var(--card); }
+
+@media (max-width: 1400px) { #top { flex-wrap: wrap; } }
 
 /* narrow screens: stack the columns and let the page scroll */
 @media (max-width: 1050px) {
