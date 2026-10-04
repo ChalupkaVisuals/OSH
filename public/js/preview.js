@@ -1,6 +1,7 @@
 // Animated osu!standard gameplay mock-up drawn with the skin's own textures.
 // env.tex(name, timeMs) -> { img, s } | null   (s = size factor: 0.5 for @2x)
 // env.ini(section, key)  -> string | undefined
+// env.has(name)          -> boolean, true when the skin itself contains the element
 
 import { parseColour } from './ini.js';
 
@@ -197,16 +198,20 @@ export class Preview {
           lg.lineWidth = 118 * k;
           lg.strokeStyle = `rgb(${border.join(',')})`;
           lg.stroke();
-          lg.lineWidth = 100 * k;
-          lg.strokeStyle = `rgb(${(track || col.map(v => Math.round(v * 0.55))).join(',')})`;
-          lg.stroke();
+          // body: track colour at the edge, slightly lighter towards the centre
+          const edge = track || col.map(v => Math.round(v * 0.55));
+          for (let step = 0; step < 6; step++) {
+            lg.lineWidth = 100 * k * (1 - step / 6.5);
+            lg.strokeStyle = `rgb(${edge.map(v => Math.round(v + (255 - v) * 0.035 * step)).join(',')})`;
+            lg.stroke();
+          }
           g.globalAlpha = clamp(bodyAlpha) * 0.85;
           g.drawImage(L, 0, 0);
           g.globalAlpha = 1;
           const [ex, ey] = pt(endPos(o));
-          this.spr('sliderendcircle', ex, ey, k, { alpha: bodyAlpha, tint: col }) ||
-            this.spr('hitcircle', ex, ey, k, { alpha: bodyAlpha, tint: col });
-          this.spr('hitcircleoverlay', ex, ey, k, { alpha: bodyAlpha });
+          // the slider tail is only drawn when the skin ships its own end circle
+          if (this.env.has('sliderendcircle')) this.spr('sliderendcircle', ex, ey, k, { alpha: bodyAlpha, tint: col });
+          if (this.env.has('sliderendcircleoverlay')) this.spr('sliderendcircleoverlay', ex, ey, k, { alpha: bodyAlpha });
         }
       }
 
