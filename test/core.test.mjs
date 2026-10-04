@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { zip, unzip } from '../public/js/zip.js';
 import { decodeText, parseIni, serializeIni, iniGet, iniSet, parseColour, rgbToHex, hexToRgb, maniaSchema } from '../public/js/ini.js';
+import { processAudio, encodeWav } from '../public/js/audioops.js';
 import { buildCatalog, CATEGORIES } from '../public/js/catalog.js';
 
 test('zip round-trips stored and deflated entries', async () => {
@@ -77,4 +78,25 @@ test('decodeText handles UTF-8 and UTF-16 skin.ini files', () => {
   assert.equal(decodeText(new Uint8Array([0xFE, 0xFF, ...be])), text);
   assert.equal(decodeText(le), text); // no BOM
   assert.equal(iniGet(parseIni(decodeText(new Uint8Array([0xFF, 0xFE, ...le]))), 'General', 'Name'), '『Mikan』');
+});
+
+test('processAudio applies gain and shifts timing', () => {
+  const src = { channels: [Float32Array.from([0.1, 0.2, 0.3, 0.4])], sampleRate: 1000 };
+  const near = (a, b) => assert.ok(a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 1e-6), `${[...a]} vs ${b}`);
+  near(processAudio(src, { gain: 2 }).channels[0], [0.2, 0.4, 0.6, 0.8]);
+  near(processAudio(src, { gain: 4 }).channels[0], [0.4, 0.8, 1, 1]); // clipped
+  near(processAudio(src, { delayMs: 2 }).channels[0], [0, 0, 0.1, 0.2, 0.3, 0.4]);
+  near(processAudio(src, { delayMs: -3 }).channels[0], [0.4]);
+  near(processAudio(src, { delayMs: -50 }).channels[0], []);
+});
+
+test('encodeWav writes a valid 16-bit header and samples', () => {
+  const wav = encodeWav({ channels: [Float32Array.from([0, 1, -1]), Float32Array.from([0.5, 0, 0])], sampleRate: 44100 });
+  const dv = new DataView(wav.buffer);
+  assert.equal(String.fromCharCode(...wav.subarray(0, 4)), 'RIFF');
+  assert.equal(wav.length, 44 + 3 * 2 * 2);
+  assert.equal(dv.getUint16(22, true), 2);
+  assert.equal(dv.getUint32(24, true), 44100);
+  assert.equal(dv.getUint32(40, true), 12);
+  assert.deepEqual([0, 2, 4, 6, 8, 10].map(o => dv.getInt16(44 + o, true)), [0, 16384, 32767, 0, -32768, 0]);
 });

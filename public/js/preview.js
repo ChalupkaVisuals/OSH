@@ -33,7 +33,11 @@ export class Preview {
     this.layer = document.createElement('canvas');
     this.env = env;
     this.cs = 4;
-    this.bg = '#15131c';
+    this.bg = '#191530';
+    this.paused = false;
+    this.speed = 1;
+    this.clock = 0;
+    this.last = 0;
     this.running = false;
     this.mouse = null;
     this.trail = [];
@@ -56,7 +60,7 @@ export class Preview {
     requestAnimationFrame(loop);
   }
 
-  stop() { this.running = false; }
+  stop() { this.running = false; this.last = 0; }
 
   bool(key, def) {
     const v = this.env.ini('General', key);
@@ -129,7 +133,11 @@ export class Preview {
     return endPos(prev);
   }
 
-  frame(now) {
+  frame(real) {
+    // scene time runs on its own clock so it can be paused and sped up
+    if (this.last && !this.paused) this.clock += Math.min(100, real - this.last) * this.speed;
+    this.last = real;
+    const now = this.clock;
     const c = this.c, dpr = window.devicePixelRatio || 1;
     const W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
     if (!W || !H) return;
@@ -260,9 +268,9 @@ export class Preview {
 
     // cursor
     const target = this.mouse ? [this.mouse[0] * W, this.mouse[1] * H] : pt(this.cursorTarget(t));
-    this.trail.push({ x: target[0], y: target[1], at: now });
-    while (this.trail.length && now - this.trail[0].at > 180) this.trail.shift();
-    for (const p of this.trail) this.spr('cursortrail', p.x, p.y, S, { alpha: (1 - (now - p.at) / 180) * 0.6 });
+    this.trail.push({ x: target[0], y: target[1], at: real });
+    while (this.trail.length && real - this.trail[0].at > 180) this.trail.shift();
+    for (const p of this.trail) this.spr('cursortrail', p.x, p.y, S, { alpha: (1 - (real - p.at) / 180) * 0.6 });
     const centre = this.bool('CursorCentre', true);
     this.spr('cursor', target[0], target[1], S, {
       rot: centre && this.bool('CursorRotate', true) ? now / 1600 : 0, topLeft: !centre,
